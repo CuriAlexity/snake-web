@@ -8,7 +8,7 @@
   const CELL = 20;
   const GRID_W = 30;
   const GRID_H = 20;
-  const HUD_H = 56; // px reserved on top
+  const HUD_H = 72; // px reserved on top (more space for pixel font)
   canvas.width = GRID_W * CELL;
   canvas.height = HUD_H + GRID_H * CELL;
 
@@ -166,9 +166,12 @@
     const x = 8, y = 8, w = canvas.width - 16, h = HUD_H - 16;
     drawGlass(x, y, w, h);
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '24px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
-    const hud = `Score: ${score}   Speed: ${fps}   Keys: arrows/WASD, +/- speed, Space pause, R restart`;
-    ctx.fillText(hud, x + 12, y + 36);
+    ctx.font = '14px "Press Start 2P", monospace';
+    const hud1 = `SCORE ${String(score).padStart(3, '0')}  SPEED ${String(fps).padStart(2, '0')}`;
+    ctx.fillText(hud1, x + 12, y + 28);
+    ctx.font = '12px "Press Start 2P", monospace';
+    const hud2 = 'ARROWS/WASD  +/- SPEED  SPACE PAUSE  R RESTART';
+    ctx.fillText(hud2, x + 12, y + 52);
   }
 
   function drawBorder() {
@@ -182,16 +185,18 @@
 
   // Input
   window.addEventListener('keydown', (e) => {
+    // Prevent page scroll on arrows/space
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Spacebar'].includes(e.key)) e.preventDefault();
     if (onMenu) {
       if (e.key === ' ' || e.key === 'Enter') { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; }
       return;
     }
     if (e.key === 'Escape') { location.reload(); }
     if (gameOver || win) {
-      if (e.key.toLowerCase() === 'r') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; }
+      if (e.key.toLowerCase() === 'r') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; musicPlay(); }
       return;
     }
-    if (e.key === ' ') { paused = !paused; return; }
+    if (e.key === ' ') { paused = !paused; musicPause(paused); return; }
     if (e.key === '-' || e.key === '_') { fps = Math.max(MIN_FPS, fps - 1); return; }
     if (e.key === '=' || e.key === '+') { fps = Math.min(MAX_FPS, fps + 1); return; }
     const [dx, dy] = dir;
@@ -200,6 +205,40 @@
     else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { if (!(dx === 1 && dy === 0)) pendingDir = [-1, 0]; }
     else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { if (!(dx === -1 && dy === 0)) pendingDir = [1, 0]; }
   });
+
+  // Simple WebAudio background loop
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let actx = null, musicOsc = null, musicGain = null;
+  function ensureAudio() {
+    if (actx) return;
+    try {
+      actx = new AudioCtx();
+      musicOsc = actx.createOscillator();
+      musicGain = actx.createGain();
+      musicOsc.type = 'triangle';
+      musicOsc.connect(musicGain);
+      musicGain.connect(actx.destination);
+      musicGain.gain.value = 0.0;
+      musicOsc.start();
+      // schedule simple repeating melody
+      let t = actx.currentTime;
+      const seq = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
+      const step = 0.18; // tempo
+      function schedule() {
+        if (!musicOsc) return;
+        for (let i = 0; i < 64; i++) {
+          for (const f of seq) {
+            musicOsc.frequency.setValueAtTime(f, t);
+            t += step;
+          }
+        }
+        setTimeout(schedule, 4000);
+      }
+      schedule();
+    } catch (e) { /* ignore */ }
+  }
+  function musicPlay() { ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.08, actx.currentTime, 0.03); }
+  function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
 
   // Loop
   let last = performance.now();
@@ -234,7 +273,7 @@
 
   function drawCenterText(t) {
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '24px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+    ctx.font = '16px "Press Start 2P", monospace';
     const m = ctx.measureText(t);
     ctx.fillText(t, (canvas.width - m.width) / 2, (canvas.height) / 2);
   }
@@ -246,7 +285,7 @@
     const y = (canvas.height - h) / 2;
     drawGlass(x, y, w, h);
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '26px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+    ctx.font = '16px "Press Start 2P", monospace';
     const t = 'Start';
     const m = ctx.measureText(t);
     ctx.fillText(t, x + (w - m.width) / 2, y + 30);
@@ -259,7 +298,7 @@
     const w = 160, h = 44;
     const x = (canvas.width - w) / 2;
     const y = (canvas.height - h) / 2;
-    if (mx >= x && mx <= x + w && my >= y && my <= y + h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; }
+    if (mx >= x && mx <= x + w && my >= y && my <= y + h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; musicPlay(); }
   });
 
   function tick() {
