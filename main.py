@@ -433,6 +433,7 @@ async def main():
                         played_game_over = False
                         paused = False
                         on_menu = False
+                        waiting_user = False
                         current_fps = START_FPS
                         pending_direction = direction
                         obstacles = set()
@@ -512,6 +513,7 @@ async def main():
                     played_game_over = False
                     paused = False
                     on_menu = False
+                    waiting_user = False
                     current_fps = START_FPS
                     pending_direction = direction
                     if USE_AUDIO:
