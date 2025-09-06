@@ -492,10 +492,18 @@
     }
   }
 
-  canvas.addEventListener('mouseup', (e) => {
-    if (!onMenu) return;
+  function getCanvasPos(e){
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    return {x, y};
+  }
+
+  canvas.addEventListener('click', (e) => {
+    if (!onMenu) return;
+    const {x: mx, y: my} = getCanvasPos(e);
     const b = computeStartButton();
     if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
   });
