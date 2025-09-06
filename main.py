@@ -402,12 +402,25 @@ async def main():
     start_button_rect = pygame.Rect(WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2 - 22, 160, 44)
     pending_direction = direction
     obstacles = set()
+    # Для веба: ждать первого взаимодействия и сразу стартовать
+    waiting_user = IS_WEB
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit(0)
+            # Любое действие пользователя в вебе снимает блокировку и запускает игру
+            if waiting_user and event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
+                waiting_user = False
+                on_menu = False
+                snake, direction, food, score = reset_game()
+                pending_direction = direction
+                paused = False
+                game_over = False
+                you_win = False
+                obstacles = set()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
@@ -507,7 +520,7 @@ async def main():
                         except Exception:
                             pass
 
-        if not on_menu and not paused and not game_over and not you_win:
+        if not on_menu and not paused and not game_over and not you_win and not waiting_user:
             direction = pending_direction
             head_x, head_y = snake[0]
             dx, dy = direction
@@ -582,6 +595,21 @@ async def main():
 
         bg = draw_vertical_gradient((WINDOW_WIDTH, WINDOW_HEIGHT), GRADIENT_TOP, GRADIENT_BOTTOM)
         screen.blit(bg, (0, 0))
+
+        if waiting_user:
+            # простой экран запуска без зависимостей
+            hint = "Click / Press any key to start"
+            try:
+                t_surf = title_font.render("Snake", True, COLOR_TEXT)
+                h_surf = font.render(hint, True, COLOR_TEXT)
+                screen.blit(t_surf, (WINDOW_WIDTH // 2 - t_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 120))
+                screen.blit(h_surf, (WINDOW_WIDTH // 2 - h_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 12))
+            except Exception:
+                pass
+            pygame.display.flip()
+            clock.tick(30)
+            await asyncio.sleep(0)
+            continue
 
         if on_menu:
             title_surf = title_font.render("Snake", True, COLOR_TEXT)
