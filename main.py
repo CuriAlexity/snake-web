@@ -6,6 +6,7 @@ import struct
 import random
 import json
 import time
+import asyncio
 
 import pygame
 
@@ -329,7 +330,10 @@ def ensure_audio_assets(asset_dir: str):
     return (music_custom or music_path), eat_path, over_path
 
 
-def main():
+def main_sync_note():
+    pass
+
+async def main():
     if USE_AUDIO:
         pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
@@ -457,10 +461,10 @@ def main():
                     if event.key == pygame.K_SPACE:
                         paused = not paused
                         try:
-                            if paused:
+                            if paused and USE_AUDIO:
                                 pygame.mixer.music.pause()
                             else:
-                                if not game_over and not on_menu and not you_win:
+                                if USE_AUDIO and not (game_over or on_menu or you_win):
                                     pygame.mixer.music.unpause()
                         except Exception:
                             pass
@@ -469,7 +473,6 @@ def main():
                     elif event.key in (pygame.K_EQUALS, pygame.K_KP_PLUS):
                         current_fps = min(MAX_FPS, current_fps + 1)
                     else:
-                        # one change per tick: update pending_direction only if it's not opposite of current direction
                         cur_dx, cur_dy = direction
                         if event.key in (pygame.K_UP, pygame.K_w):
                             if not (cur_dx == 0 and cur_dy == 1):
@@ -493,7 +496,6 @@ def main():
                     on_menu = False
                     current_fps = START_FPS
                     pending_direction = direction
-                    obstacles = set()
                     if USE_AUDIO:
                         try:
                             if not pygame.mixer.music.get_busy():
@@ -502,19 +504,16 @@ def main():
                             pass
 
         if not on_menu and not paused and not game_over and not you_win:
-            # apply pending direction exactly once per tick
             direction = pending_direction
             head_x, head_y = snake[0]
             dx, dy = direction
             new_head = (head_x + dx, head_y + dy)
 
-            # Wall collision
             if not (0 <= new_head[0] < GRID_WIDTH and 0 <= new_head[1] < GRID_HEIGHT):
                 game_over = True
                 death_reason = "Hit wall"
             else:
                 will_eat = (new_head == food)
-                # Obstacle collision
                 if new_head in obstacles:
                     game_over = True
                     death_reason = "Hit obstacle"
@@ -535,19 +534,18 @@ def main():
                                 food = next_food
                             current_fps = min(MAX_FPS, current_fps + 1)
                             try:
-                                if eat_sound:
+                                if USE_AUDIO and eat_sound:
                                     eat_sound.play()
                             except Exception:
                                 pass
-                            # Reset obstacles and spawn ~3 new ones
                             obstacles = spawn_obstacles(3, set(snake) | {food})
                         else:
                             snake.pop()
 
         if game_over and not played_game_over:
             try:
-                pygame.mixer.music.fadeout(800)
-                if game_over_sound:
+                if USE_AUDIO and game_over_sound:
+                    pygame.mixer.music.fadeout(800)
                     game_over_sound.play()
             except Exception:
                 pass
@@ -563,7 +561,8 @@ def main():
 
         if you_win:
             try:
-                pygame.mixer.music.fadeout(800)
+                if USE_AUDIO:
+                    pygame.mixer.music.fadeout(800)
             except Exception:
                 pass
             log_event({
@@ -577,7 +576,6 @@ def main():
             win_surf = font.render(win_text, True, COLOR_TEXT)
             screen.blit(win_surf, (WINDOW_WIDTH // 2 - win_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 12))
 
-        # --- Draw
         bg = draw_vertical_gradient((WINDOW_WIDTH, WINDOW_HEIGHT), GRADIENT_TOP, GRADIENT_BOTTOM)
         screen.blit(bg, (0, 0))
 
@@ -587,26 +585,23 @@ def main():
             draw_glass_panel(screen, start_button_rect)
             btn_text = button_font.render("Start", True, COLOR_TEXT)
             screen.blit(btn_text, (start_button_rect.centerx - btn_text.get_width() // 2, start_button_rect.centery - btn_text.get_height() // 2))
-            hint = "Space/Enter to start"
+            hint = "Click / Space / Enter to start"
             hint_surf = font.render(hint, True, COLOR_TEXT)
             screen.blit(hint_surf, (WINDOW_WIDTH // 2 - hint_surf.get_width() // 2, start_button_rect.bottom + 12))
             pygame.display.flip()
             clock.tick(30)
+            await asyncio.sleep(0)
             continue
 
-        # HUD panel occupies top
         hud_rect = pygame.Rect(8, 8, WINDOW_WIDTH - 16, HUD_RESERVED_PX - 16)
         draw_glass_panel(screen, hud_rect)
         hud_text = f"Score: {score}   Speed: {current_fps}   Keys: arrows/WASD, +/- speed, Space pause, R restart, Esc quit"
         hud_surf = font.render(hud_text, True, COLOR_TEXT)
         screen.blit(hud_surf, (hud_rect.x + 12, hud_rect.y + (hud_rect.height - hud_surf.get_height()) // 2))
 
-        # Red border around the playable area (below HUD)
         playfield_rect_outer = pygame.Rect(4, HUD_RESERVED_PX, WINDOW_WIDTH - 8, WINDOW_HEIGHT - HUD_RESERVED_PX - 4)
         pygame.draw.rect(screen, BORDER_COLOR, playfield_rect_outer, BORDER_THICKNESS, border_radius=8)
 
-        # Draw food and snake below HUD
-        # Obstacles
         for ob in obstacles:
             draw_obstacle(screen, ob)
         if not you_win:
@@ -625,16 +620,16 @@ def main():
 
         pygame.display.flip()
         clock.tick(current_fps)
+        await asyncio.sleep(0)
 
 
 if __name__ == "__main__":
     try:
         if IS_WEB:
-            import asyncio
             print("[web] starting asyncio main()")
             asyncio.run(main())
         else:
-            main()
+            asyncio.run(main())
     except Exception as exc:
         print("[error]", exc)
 
