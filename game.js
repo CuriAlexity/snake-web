@@ -219,35 +219,42 @@
 
   // Simple WebAudio background loop
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  let actx = null, musicOsc = null, musicGain = null;
+  let actx = null, musicOsc = null, noteGain = null, musicGain = null;
   let musicMuted = false;
   function ensureAudio() {
     if (actx) return;
     try {
       actx = new AudioCtx();
       musicOsc = actx.createOscillator();
-      musicGain = actx.createGain();
+      noteGain = actx.createGain();     // per-note envelope
+      musicGain = actx.createGain();    // master volume for pause/mute
       musicOsc.type = 'square';
-      musicOsc.connect(musicGain);
+      musicOsc.connect(noteGain);
+      noteGain.connect(musicGain);
       musicGain.connect(actx.destination);
+      noteGain.gain.value = 0.0;
       musicGain.gain.value = 0.0;
       musicOsc.start();
       // schedule simple repeating melody
       let t = actx.currentTime;
-      // Short, punchy 16th-note groove (NES-like)
-      const seq = [262, 330, 392, 494, 392, 330, 349, 392, 440, 392, 349, 330, 294, 330, 392, 440];
-      const step = 0.14; // shorter note length
+      // Punchy 16th-8th mixed groove with rests (NES-like)
+      const seq = [262, 330, 392, null, 392, 330, 349, 392, 440, null, 392, 349, 330, 294, null, 330, 392, 440];
+      const step = 0.18; // slightly slower
       function schedule() {
         if (!musicOsc) return;
-        for (let i = 0; i < 96; i++) {
+        for (let i = 0; i < 64; i++) {
           for (const f of seq) {
-            // Set pitch
-            musicOsc.frequency.setValueAtTime(f, t);
-            // Gate envelope per note (staccato)
-            musicGain.gain.cancelScheduledValues(t);
-            musicGain.gain.setValueAtTime(0.0, t);
-            musicGain.gain.linearRampToValueAtTime(0.055, t + 0.01); // quick attack
-            musicGain.gain.linearRampToValueAtTime(0.0, t + step * 0.7); // release before next
+            if (f) {
+              musicOsc.frequency.setValueAtTime(f, t);
+              // Per-note envelope on noteGain, master volume stays untouched
+              noteGain.gain.cancelScheduledValues(t);
+              noteGain.gain.setValueAtTime(0.0, t);
+              noteGain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+              noteGain.gain.linearRampToValueAtTime(0.0, t + step * 0.7);
+            } else {
+              // Rest
+              noteGain.gain.setValueAtTime(0.0, t);
+            }
             t += step;
           }
         }
@@ -256,9 +263,19 @@
       schedule();
     } catch (e) { /* ignore */ }
   }
-  function musicPlay() { if (musicMuted) return; ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.04, actx.currentTime, 0.03); }
+  async function musicPlay() {
+    if (musicMuted) return; ensureAudio(); try { await actx.resume?.(); } catch(_){}
+    if (musicGain) musicGain.gain.setTargetAtTime(0.05, actx.currentTime, 0.03);
+  }
   function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
-  function musicToggleMute() { musicMuted = !musicMuted; if (musicMuted) musicPause(); else musicPlay(); }
+  function musicToggleMute() {
+    musicMuted = !musicMuted;
+    if (musicMuted) { musicPause(); }
+    else {
+      // play only if not paused/menu/gameover/win
+      if (!paused && !onMenu && !gameOver && !win) musicPlay();
+    }
+  }
 
   // Game-over jingle ("pa-pa-pam") and helpers
   let sfxOsc = null, sfxGain = null;
@@ -317,7 +334,12 @@
       snake.forEach(drawSnakeCell);
       if (paused && !gameOver && !win) drawCenterText('Paused');
       if (gameOver) {
-        if (!playedGameOver) { playedGameOver = true; musicPause(); playGameOverJingle(); }
+        if (!playedGameOver) {
+          playedGameOver = true;
+          musicPause();
+          // маленькая задержка, затем проигрышный сигнал
+          setTimeout(() => playGameOverJingle(), 200);
+        }
         drawCenterText(`Game Over (${deathReason}). Press R to restart.`);
       }
       if (win) drawCenterText(`You Win! Score: ${score}. Press R to restart.`);
