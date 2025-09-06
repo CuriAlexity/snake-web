@@ -249,7 +249,7 @@
               // Per-note envelope on noteGain, master volume stays untouched
               noteGain.gain.cancelScheduledValues(t);
               noteGain.gain.setValueAtTime(0.0, t);
-              noteGain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+              noteGain.gain.linearRampToValueAtTime(1.0, t + 0.01);
               noteGain.gain.linearRampToValueAtTime(0.0, t + step * 0.7);
             } else {
               // Rest
@@ -265,7 +265,7 @@
   }
   async function musicPlay() {
     if (musicMuted) return; ensureAudio(); try { await actx.resume?.(); } catch(_){}
-    if (musicGain) musicGain.gain.setTargetAtTime(0.05, actx.currentTime, 0.03);
+    if (musicGain) musicGain.gain.setTargetAtTime(0.06, actx.currentTime, 0.03);
   }
   function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
   function musicToggleMute() {
