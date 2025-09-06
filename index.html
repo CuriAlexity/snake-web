@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake (Web)</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0e1016; }
+    body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #e6e6e6; }
+    #wrap { width: 960px; max-width: 96vw; }
+    canvas { width: 100%; height: auto; display: block; background: linear-gradient(180deg, #22263a 0%, #0c0e14 100%); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .hud { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game" width="600" height="480"></canvas>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

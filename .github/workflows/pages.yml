@@ -1,4 +1,4 @@
-name: Build and Deploy (pygbag)
+name: Deploy static site (JS Canvas)
 
 on:
   push:
@@ -15,39 +15,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install pygbag
-        run: |
-          python -m pip install --upgrade pip
-          pip install pygbag==0.9.2
-
-      - name: Build web
-        run: |
-          python -m pygbag --build .
-          echo "Build at $(pwd)/build/web"
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload artifact (static root)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
