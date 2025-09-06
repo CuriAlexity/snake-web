@@ -39,6 +39,7 @@
   let paused = false, gameOver = false, win = false, onMenu = true;
   let fps = START_FPS;
   let deathReason = '';
+  let playedGameOver = false;
 
   const UP = [0, -1];
   const DOWN = [0, 1];
@@ -202,7 +203,7 @@
     }
     if (key === 'escape') { location.reload(); }
     if (gameOver || win) {
-      if (key === 'r' || key === 'к') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
+      if (key === 'r' || key === 'к') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; playedGameOver = false; if (!musicMuted) musicPlay(); }
       return;
     }
     if (key === ' ') { paused = !paused; if (paused) musicPause(); else if (!musicMuted) musicPlay(); return; }
@@ -259,6 +260,38 @@
   function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
   function musicToggleMute() { musicMuted = !musicMuted; if (musicMuted) musicPause(); else musicPlay(); }
 
+  // Game-over jingle ("pa-pa-pam") and helpers
+  let sfxOsc = null, sfxGain = null;
+  function stopSfx() {
+    if (sfxOsc) { try { sfxOsc.stop(); } catch(_){} sfxOsc = null; }
+    if (sfxGain) { try { sfxGain.disconnect(); } catch(_){} sfxGain = null; }
+  }
+  function stopAllMusic() { musicPause(); stopSfx(); }
+  function playGameOverJingle() {
+    if (musicMuted) return;
+    ensureAudio();
+    stopSfx();
+    sfxOsc = actx.createOscillator();
+    sfxGain = actx.createGain();
+    sfxOsc.type = 'square';
+    sfxOsc.connect(sfxGain); sfxGain.connect(actx.destination);
+    let t = actx.currentTime;
+    const beat = 0.42; // ~5 seconds total below
+    const notes = [440, 392, 349]; // A4 -> G4 -> F4 (downward "pa-pa-pam")
+    notes.forEach((f, i) => {
+      sfxOsc.frequency.setValueAtTime(f, t);
+      sfxGain.gain.setValueAtTime(0.0, t);
+      sfxGain.gain.linearRampToValueAtTime(0.06, t + 0.04); // attack
+      const hold = beat * (i === notes.length - 1 ? 1.6 : 0.8);
+      sfxGain.gain.linearRampToValueAtTime(0.0, t + hold); // release
+      t += hold + 0.06; // small gap between notes
+    });
+    // soft tail
+    sfxOsc.frequency.linearRampToValueAtTime(220, t + 0.6);
+    try { sfxOsc.start(); } catch(_){}
+    try { sfxOsc.stop(t + 5.0); } catch(_){}
+  }
+
   // Loop
   let last = performance.now();
   let acc = 0;
@@ -283,7 +316,10 @@
       if (!win) drawFood(food);
       snake.forEach(drawSnakeCell);
       if (paused && !gameOver && !win) drawCenterText('Paused');
-      if (gameOver) drawCenterText(`Game Over (${deathReason}). Press R to restart.`);
+      if (gameOver) {
+        if (!playedGameOver) { playedGameOver = true; musicPause(); playGameOverJingle(); }
+        drawCenterText(`Game Over (${deathReason}). Press R to restart.`);
+      }
       if (win) drawCenterText(`You Win! Score: ${score}. Press R to restart.`);
     }
 
