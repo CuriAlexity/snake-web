@@ -12,6 +12,7 @@ import pygame
 
 # --- Env
 IS_WEB = (sys.platform == "emscripten")
+USE_AUDIO = not IS_WEB
 
 # --- Config
 CELL_SIZE = 20
@@ -329,7 +330,8 @@ def ensure_audio_assets(asset_dir: str):
 
 
 def main():
-    pygame.mixer.pre_init(22050, -16, 1, 512)
+    if USE_AUDIO:
+        pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("Snake")
@@ -346,15 +348,27 @@ def main():
     base_dir = os.path.dirname(__file__)
     assets_dir = os.path.join(base_dir, "assets")
     music_path, eat_path, over_path = ensure_audio_assets(assets_dir)
-    try:
-        pygame.mixer.music.load(music_path)
-        pygame.mixer.music.set_volume(0.15)
-    except Exception:
-        pass
-    eat_sound = pygame.mixer.Sound(eat_path)
-    eat_sound.set_volume(0.45)
-    game_over_sound = pygame.mixer.Sound(over_path)
-    game_over_sound.set_volume(0.45)
+    if USE_AUDIO:
+        try:
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.set_volume(0.15)
+        except Exception:
+            pass
+        eat_sound = None
+        game_over_sound = None
+        try:
+            eat_sound = pygame.mixer.Sound(eat_path)
+            eat_sound.set_volume(0.45)
+        except Exception:
+            pass
+        try:
+            game_over_sound = pygame.mixer.Sound(over_path)
+            game_over_sound.set_volume(0.45)
+        except Exception:
+            pass
+    else:
+        eat_sound = None
+        game_over_sound = None
 
     UP = (0, -1)
     DOWN = (0, 1)
@@ -517,7 +531,8 @@ def main():
                                 food = next_food
                             current_fps = min(MAX_FPS, current_fps + 1)
                             try:
-                                eat_sound.play()
+                                if eat_sound:
+                                    eat_sound.play()
                             except Exception:
                                 pass
                             # Reset obstacles and spawn ~3 new ones
@@ -528,7 +543,8 @@ def main():
         if game_over and not played_game_over:
             try:
                 pygame.mixer.music.fadeout(800)
-                game_over_sound.play()
+                if game_over_sound:
+                    game_over_sound.play()
             except Exception:
                 pass
             played_game_over = True
