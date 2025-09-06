@@ -320,10 +320,17 @@
   }
 
   function drawMenu() {
-    drawCenterText('Snake');
     const btn = computeStartButton();
-    drawGlass(btn.x, btn.y, btn.w, btn.h);
+    // Title above the button
     ctx.fillStyle = COLOR_TEXT;
+    ctx.font = '18px "Press Start 2P", monospace';
+    const title = 'Snake';
+    const tw = ctx.measureText(title).width;
+    const ty = Math.max(24, btn.y - 24);
+    ctx.fillText(title, (canvas.width - tw) / 2, ty);
+
+    // Button with fitted text
+    drawGlass(btn.x, btn.y, btn.w, btn.h);
     ctx.font = `${btn.size}px "Press Start 2P", monospace`;
     ctx.fillText(btn.t, btn.x + btn.padX, btn.y + btn.h - btn.padY);
   }
