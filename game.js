@@ -27,6 +27,7 @@
   const BORDER_COLOR = '#c83c3c';
   const BORDER_THICK = 3;
   const APPLE_MARGIN = 1;
+  const TITLE_SNAKE_COLOR = '#f1c232'; // yellow cartoon snake for the title
 
   // Speed
   const BASE_FPS = 12;
@@ -313,24 +314,32 @@
   function playEatSfx() {
     ensureAudio();
     const sr = actx.sampleRate || 44100;
-    const dur = 0.12; // 120 ms
+    const dur = 0.22; // longer and juicier
     const n = Math.floor(sr * dur);
     const buf = actx.createBuffer(1, n, sr);
     const data = buf.getChannelData(0);
-    // Exponential decay envelope for a crunchy pop
+    // Two-stage envelope: bite + chew
     for (let i = 0; i < n; i++) {
       const t = i / n;
-      const env = Math.exp(-8 * t); // fast decay
+      const env1 = Math.exp(-10 * Math.min(t, 0.25));
+      const env2 = (t > 0.08) ? Math.exp(-5 * (t - 0.08)) * 0.4 : 0;
+      const env = Math.max(env1, env2);
       data[i] = (Math.random() * 2 - 1) * env;
     }
     const src = actx.createBufferSource();
     src.buffer = buf;
     const bp = actx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.value = 1600;
-    bp.Q.value = 1.2;
+    bp.frequency.value = 1400;
+    bp.Q.value = 0.9;
     const g = actx.createGain();
-    g.gain.value = 0.08; // close to bg level
+    g.gain.value = 0.12; // louder than bg
+    // Duck background slightly during the bite
+    if (musicGain && actx) {
+      const t0 = actx.currentTime;
+      musicGain.gain.setTargetAtTime(Math.max(0.02, musicGain.gain.value * 0.55), t0, 0.01);
+      musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.03);
+    }
     src.connect(bp); bp.connect(g); g.connect(actx.destination);
     try { src.start(); } catch(_){}
   }
@@ -420,77 +429,55 @@
     ctx.fillText(btn.t, btn.x + btn.padX, btn.y + btn.h - btn.padY);
   }
 
-  // Render the word SNAKE using snake-like rounded segments on a small grid
+  // Render a compact cartoon snake spelling SNAKE
   function drawSnakeTitle(bottomY) {
-    const LETTERS = {
-      S: [
-        '11110',
-        '10000',
-        '11100',
-        '00010',
-        '11110'
-      ],
-      N: [
-        '10001',
-        '11001',
-        '10101',
-        '10011',
-        '10001'
-      ],
-      A: [
-        '01110',
-        '10001',
-        '11111',
-        '10001',
-        '10001'
-      ],
-      K: [
-        '10001',
-        '10010',
-        '11100',
-        '10010',
-        '10001'
-      ],
-      E: [
-        '11111',
-        '10000',
-        '11110',
-        '10000',
-        '11111'
-      ]
-    };
+    const width = Math.floor(canvas.width * 0.8);
+    const height = 60;
+    const x0 = Math.floor((canvas.width - width) / 2);
+    const y0 = Math.max(16, bottomY - height - 12);
 
-    const word = ['S','N','A','K','E'];
-    const letterW = 5;
-    const letterH = 5;
-    const gap = 2; // cells between letters
-    const totalCells = word.length * letterW + (word.length - 1) * gap;
-    const cell = Math.floor(Math.min(canvas.width * 0.9 / totalCells, 26));
-    const totalWpx = totalCells * cell;
-    const x0 = Math.floor((canvas.width - totalWpx) / 2);
-    const y0 = Math.max(20, bottomY - letterH * cell - 12);
-
-    let cursor = 0;
-    for (const ch of word) {
-      const grid = LETTERS[ch];
-      for (let y = 0; y < letterH; y++) {
-        for (let x = 0; x < letterW; x++) {
-          if (grid[y][x] === '1') {
-            const px = x0 + (cursor + x) * cell;
-            const py = y0 + y * cell;
-            // shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.35)';
-            roundRect(ctx, px, py + 2, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
-            ctx.fill();
-            // body
-            ctx.fillStyle = COLOR_SNAKE;
-            roundRect(ctx, px, py, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
-            ctx.fill();
-          }
-        }
-      }
-      cursor += letterW + gap;
+    ctx.save();
+    // Snake body path (simple sinus curve across the word area)
+    ctx.strokeStyle = TITLE_SNAKE_COLOR;
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    const segments = 24;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const x = x0 + t * width;
+      const y = y0 + height/2 + Math.sin(t * Math.PI * 2) * (height/3);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
+    ctx.stroke();
+
+    // Head
+    const hx = x0 + width - 6;
+    const hy = y0 + height/2 + Math.sin(2 * Math.PI) * (height/3);
+    ctx.fillStyle = TITLE_SNAKE_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, 18, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#0c0e14';
+    ctx.beginPath(); ctx.arc(hx - 6, hy - 4, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx + 2, hy - 4, 2.5, 0, Math.PI*2); ctx.fill();
+    // Tongue
+    ctx.strokeStyle = '#e06666';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(hx + 16, hy + 2); ctx.lineTo(hx + 26, hy + 4); ctx.moveTo(hx + 26, hy + 4); ctx.lineTo(hx + 22, hy + 1); ctx.moveTo(hx + 26, hy + 4); ctx.lineTo(hx + 22, hy + 7); ctx.stroke();
+    ctx.restore();
+
+    // Overlay thin white path to resemble letters (stylized)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const word = 'SNAKE';
+    ctx.font = '18px "Press Start 2P", monospace';
+    const tw = ctx.measureText(word).width;
+    ctx.strokeText(word, Math.floor((canvas.width - tw)/2), y0 + height + 10); // small label under snake
+    ctx.restore();
   }
 
   canvas.addEventListener('mouseup', (e) => {
