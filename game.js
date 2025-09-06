@@ -320,34 +320,54 @@
   function playEatSfx() {
     ensureAudio();
     const sr = actx.sampleRate || 44100;
-    const dur = 0.22; // longer and juicier
+    const dur = 0.35; // longer, juicier
     const n = Math.floor(sr * dur);
     const buf = actx.createBuffer(1, n, sr);
     const data = buf.getChannelData(0);
-    // Two-stage envelope: bite + chew
+    // Three-stage envelope: crack -> crunch -> chew
     for (let i = 0; i < n; i++) {
       const t = i / n;
-      const env1 = Math.exp(-10 * Math.min(t, 0.25));
-      const env2 = (t > 0.08) ? Math.exp(-5 * (t - 0.08)) * 0.4 : 0;
-      const env = Math.max(env1, env2);
+      const crack = Math.exp(-18 * Math.min(t, 0.06));
+      const crunch = (t > 0.04) ? Math.exp(-9 * (t - 0.04)) * 0.9 : 0;
+      const chew = (t > 0.14) ? Math.exp(-4.2 * (t - 0.14)) * 0.45 : 0;
+      const env = Math.max(crack, crunch, chew);
       data[i] = (Math.random() * 2 - 1) * env;
     }
-    const src = actx.createBufferSource();
-    src.buffer = buf;
-    const bp = actx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1400;
-    bp.Q.value = 0.9;
-    const g = actx.createGain();
-    g.gain.value = 0.12; // louder than bg
-    // Duck background slightly during the bite
+    const noise = actx.createBufferSource();
+    noise.buffer = buf;
+    const bp1 = actx.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = 1500; bp1.Q.value = 1.0;
+    const bp2 = actx.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 2200; bp2.Q.value = 0.7;
+    const mix = actx.createGain(); mix.gain.value = 0.16; // clearly above bg
+    const pan = actx.createStereoPanner ? actx.createStereoPanner() : null;
+    if (pan) pan.pan.value = 0.1;
+
+    // Add two short “click” oscillators to emphasize bite
+    const clickGain = actx.createGain(); clickGain.gain.value = 0.0;
+    const click1 = actx.createOscillator(); click1.type = 'square'; click1.frequency.value = 900;
+    const click2 = actx.createOscillator(); click2.type = 'square'; click2.frequency.value = 1200;
+    click1.connect(clickGain); click2.connect(clickGain);
+
+    const now = actx.currentTime;
+    clickGain.gain.setValueAtTime(0.0, now);
+    clickGain.gain.linearRampToValueAtTime(0.18, now + 0.01);
+    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.05);
+    clickGain.gain.linearRampToValueAtTime(0.16, now + 0.08);
+    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.12);
+
+    // Stronger ducking of music
     if (musicGain && actx) {
-      const t0 = actx.currentTime;
-      musicGain.gain.setTargetAtTime(Math.max(0.02, musicGain.gain.value * 0.55), t0, 0.01);
-      musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.03);
+      musicGain.gain.setTargetAtTime(0.015, now, 0.008);
+      musicGain.gain.setTargetAtTime(0.06, now + 0.5, 0.06);
     }
-    src.connect(bp); bp.connect(g); g.connect(actx.destination);
-    try { src.start(); } catch(_){}
+
+    noise.connect(bp1); noise.connect(bp2);
+    bp1.connect(mix); bp2.connect(mix);
+    clickGain.connect(mix);
+    if (pan) { mix.connect(pan); pan.connect(actx.destination); } else { mix.connect(actx.destination); }
+
+    try { click1.start(now); click2.start(now); } catch(_){}
+    try { click1.stop(now + 0.14); click2.stop(now + 0.18); } catch(_){}
+    try { noise.start(); } catch(_){}
   }
 
   // Loop
