@@ -320,16 +320,16 @@
   function playEatSfx() {
     ensureAudio();
     const sr = actx.sampleRate || 44100;
-    const dur = 0.35; // longer, juicier
+    const dur = 0.20; // shorter bite, same loudness
     const n = Math.floor(sr * dur);
     const buf = actx.createBuffer(1, n, sr);
     const data = buf.getChannelData(0);
-    // Three-stage envelope: crack -> crunch -> chew
+    // Two/three-stage compact envelope: crack -> crunch (short) -> quick chew tail
     for (let i = 0; i < n; i++) {
       const t = i / n;
-      const crack = Math.exp(-18 * Math.min(t, 0.06));
-      const crunch = (t > 0.04) ? Math.exp(-9 * (t - 0.04)) * 0.9 : 0;
-      const chew = (t > 0.14) ? Math.exp(-4.2 * (t - 0.14)) * 0.45 : 0;
+      const crack = Math.exp(-18 * Math.min(t, 0.05));
+      const crunch = (t > 0.035) ? Math.exp(-10 * (t - 0.035)) * 0.9 : 0;
+      const chew = (t > 0.10) ? Math.exp(-5.0 * (t - 0.10)) * 0.35 : 0;
       const env = Math.max(crack, crunch, chew);
       data[i] = (Math.random() * 2 - 1) * env;
     }
@@ -350,14 +350,14 @@
     const now = actx.currentTime;
     clickGain.gain.setValueAtTime(0.0, now);
     clickGain.gain.linearRampToValueAtTime(0.18, now + 0.01);
-    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.05);
-    clickGain.gain.linearRampToValueAtTime(0.16, now + 0.08);
-    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.12);
+    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.04);
+    clickGain.gain.linearRampToValueAtTime(0.16, now + 0.07);
+    clickGain.gain.linearRampToValueAtTime(0.0, now + 0.10);
 
     // Stronger ducking of music
     if (musicGain && actx) {
       musicGain.gain.setTargetAtTime(0.015, now, 0.008);
-      musicGain.gain.setTargetAtTime(0.06, now + 0.5, 0.06);
+      musicGain.gain.setTargetAtTime(0.06, now + 0.30, 0.05);
     }
 
     noise.connect(bp1); noise.connect(bp2);
