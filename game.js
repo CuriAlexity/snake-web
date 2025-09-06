@@ -281,9 +281,18 @@
 
   function drawCenterText(t) {
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '16px "Press Start 2P", monospace';
-    const m = ctx.measureText(t);
-    ctx.fillText(t, (canvas.width - m.width) / 2, (canvas.height) / 2);
+    // Auto-fit text to available width (inside border)
+    const margin = 28;
+    const maxW = canvas.width - margin * 2;
+    let size = 16;
+    ctx.font = `${size}px "Press Start 2P", monospace`;
+    let w = ctx.measureText(t).width;
+    while (w > maxW && size > 10) {
+      size -= 1;
+      ctx.font = `${size}px "Press Start 2P", monospace`;
+      w = ctx.measureText(t).width;
+    }
+    ctx.fillText(t, (canvas.width - w) / 2, Math.floor(canvas.height / 2));
   }
 
   function drawMenu() {
