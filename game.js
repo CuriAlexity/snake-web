@@ -11,6 +11,14 @@
   const HUD_H = 72; // px reserved on top (more space for pixel font)
   canvas.width = GRID_W * CELL;
   canvas.height = HUD_H + GRID_H * CELL;
+  // Responsive scale to fit viewport while keeping aspect
+  function fitCanvas() {
+    const scale = Math.min(window.innerWidth / canvas.width * 0.96, window.innerHeight / canvas.height * 0.96);
+    canvas.style.width = Math.floor(canvas.width * scale) + 'px';
+    canvas.style.height = Math.floor(canvas.height * scale) + 'px';
+  }
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
 
   const COLOR_TEXT = '#e6e6e6';
   const COLOR_SNAKE = '#00c878';
@@ -188,7 +196,7 @@
     // Prevent page scroll on arrows/space
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Spacebar'].includes(e.key)) e.preventDefault();
     if (onMenu) {
-      if (e.key === ' ' || e.key === 'Enter') { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; }
+      if (e.key === ' ' || e.key === 'Enter') { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; musicPlay(); }
       return;
     }
     if (e.key === 'Escape') { location.reload(); }
@@ -280,22 +288,29 @@
 
   function drawMenu() {
     drawCenterText('Snake');
-    const w = 160, h = 44;
+    const t = 'Press Start';
+    ctx.font = '16px "Press Start 2P", monospace';
+    const m = ctx.measureText(t);
+    const padX = 24, padY = 16;
+    const w = m.width + padX * 2;
+    const h = 44;
     const x = (canvas.width - w) / 2;
     const y = (canvas.height - h) / 2;
     drawGlass(x, y, w, h);
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '16px "Press Start 2P", monospace';
-    const t = 'Start';
-    const m = ctx.measureText(t);
-    ctx.fillText(t, x + (w - m.width) / 2, y + 30);
+    ctx.fillText(t, x + padX, y + 30);
   }
 
   canvas.addEventListener('mouseup', (e) => {
     if (!onMenu) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const w = 160, h = 44;
+    ctx.font = '16px "Press Start 2P", monospace';
+    const t = 'Press Start';
+    const m = ctx.measureText(t);
+    const padX = 24, padY = 16;
+    const w = m.width + padX * 2;
+    const h = 44;
     const x = (canvas.width - w) / 2;
     const y = (canvas.height - h) / 2;
     if (mx >= x && mx <= x + w && my >= y && my <= y + h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; musicPlay(); }
