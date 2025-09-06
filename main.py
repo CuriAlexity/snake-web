@@ -1,7 +1,7 @@
 import sys
 import os
 import math
-import wave
+# import wave  # avoid on web; import only when needed on desktop
 import struct
 import random
 import json
@@ -208,6 +208,9 @@ def spawn_obstacles(num: int, exclude_cells):
 # --- Audio generation (simple procedural WAVs)
 
 def _write_wav(path: str, samples, sample_rate: int = 22050):
+    if IS_WEB:
+        return  # never write files on web
+    import wave  # desktop-only
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with wave.open(path, "w") as wf:
         n_channels = 1
@@ -337,7 +340,8 @@ async def main():
     if USE_AUDIO:
         pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
-    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    flags = pygame.SCALED if IS_WEB else 0
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), flags)
     pygame.display.set_caption("Snake")
     clock = pygame.time.Clock()
     try:
