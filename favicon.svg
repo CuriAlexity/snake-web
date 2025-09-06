@@ -6,7 +6,13 @@
     </linearGradient>
   </defs>
   <rect x="2" y="2" width="60" height="60" rx="12" fill="url(#g)"/>
-  <circle cx="28" cy="40" r="6" fill="#00c878"/>
-  <circle cx="38" cy="40" r="6" fill="#00c878"/>
-  <circle cx="48" cy="40" r="6" fill="#00c878"/>
+  <!-- Snake head -->
+  <path d="M18 38 q0-10 14-10 q14 0 14 10 q0 8-7 10 h-14 q-7-2-7-10z" fill="#00c878"/>
+  <!-- Eyes -->
+  <circle cx="28" cy="34" r="2" fill="#0c0e14"/>
+  <circle cx="36" cy="34" r="2" fill="#0c0e14"/>
+  <!-- Gamepad in mouth -->
+  <rect x="24" y="40" width="16" height="6" rx="3" fill="#bfc7ff"/>
+  <circle cx="28" cy="43" r="1.2" fill="#7a86d6"/>
+  <rect x="33.5" y="41.8" width="5" height="2.4" rx="1.2" fill="#7a86d6"/>
 </svg>

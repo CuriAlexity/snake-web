@@ -385,18 +385,86 @@
 
   function drawMenu() {
     const btn = computeStartButton();
-    // Title above the button
-    ctx.fillStyle = COLOR_TEXT;
-    ctx.font = '18px "Press Start 2P", monospace';
-    const title = 'Snake';
-    const tw = ctx.measureText(title).width;
-    const ty = Math.max(24, btn.y - 24);
-    ctx.fillText(title, (canvas.width - tw) / 2, ty);
+    // Big snake-styled title above the button
+    drawSnakeTitle(btn.y - 16);
 
     // Button with fitted text
     drawGlass(btn.x, btn.y, btn.w, btn.h);
     ctx.font = `${btn.size}px "Press Start 2P", monospace`;
     ctx.fillText(btn.t, btn.x + btn.padX, btn.y + btn.h - btn.padY);
+  }
+
+  // Render the word SNAKE using snake-like rounded segments on a small grid
+  function drawSnakeTitle(bottomY) {
+    const LETTERS = {
+      S: [
+        '11110',
+        '10000',
+        '11100',
+        '00010',
+        '11110'
+      ],
+      N: [
+        '10001',
+        '11001',
+        '10101',
+        '10011',
+        '10001'
+      ],
+      A: [
+        '01110',
+        '10001',
+        '11111',
+        '10001',
+        '10001'
+      ],
+      K: [
+        '10001',
+        '10010',
+        '11100',
+        '10010',
+        '10001'
+      ],
+      E: [
+        '11111',
+        '10000',
+        '11110',
+        '10000',
+        '11111'
+      ]
+    };
+
+    const word = ['S','N','A','K','E'];
+    const letterW = 5;
+    const letterH = 5;
+    const gap = 2; // cells between letters
+    const totalCells = word.length * letterW + (word.length - 1) * gap;
+    const cell = Math.floor(Math.min(canvas.width * 0.9 / totalCells, 26));
+    const totalWpx = totalCells * cell;
+    const x0 = Math.floor((canvas.width - totalWpx) / 2);
+    const y0 = Math.max(20, bottomY - letterH * cell - 12);
+
+    let cursor = 0;
+    for (const ch of word) {
+      const grid = LETTERS[ch];
+      for (let y = 0; y < letterH; y++) {
+        for (let x = 0; x < letterW; x++) {
+          if (grid[y][x] === '1') {
+            const px = x0 + (cursor + x) * cell;
+            const py = y0 + y * cell;
+            // shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            roundRect(ctx, px, py + 2, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
+            ctx.fill();
+            // body
+            ctx.fillStyle = COLOR_SNAKE;
+            roundRect(ctx, px, py, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
+            ctx.fill();
+          }
+        }
+      }
+      cursor += letterW + gap;
+    }
   }
 
   canvas.addEventListener('mouseup', (e) => {
