@@ -222,6 +222,12 @@
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let actx = null, musicOsc = null, noteGain = null, musicGain = null;
   let musicMuted = false;
+  function stopBackgroundNow() {
+    if (!actx) return;
+    const now = actx.currentTime || 0;
+    try { if (musicGain) { musicGain.gain.cancelScheduledValues(now); musicGain.gain.setValueAtTime(0.0, now); } } catch(_){}
+    try { if (noteGain) { noteGain.gain.cancelScheduledValues(now); noteGain.gain.setValueAtTime(0.0, now); } } catch(_){}
+  }
   function ensureAudio() {
     if (actx) return;
     try {
@@ -371,8 +377,7 @@
       if (gameOver) {
         if (!playedGameOver) {
           playedGameOver = true;
-          musicPause();
-          // маленькая задержка, затем проигрышный сигнал
+          stopBackgroundNow();
           setTimeout(() => playGameOverJingle(), 200);
         }
         drawCenterText(`Game Over (${deathReason}). Press R to restart.`);
@@ -431,53 +436,40 @@
 
   // Render a compact cartoon snake spelling SNAKE
   function drawSnakeTitle(bottomY) {
-    const width = Math.floor(canvas.width * 0.8);
-    const height = 60;
-    const x0 = Math.floor((canvas.width - width) / 2);
-    const y0 = Math.max(16, bottomY - height - 12);
-
-    ctx.save();
-    // Snake body path (simple sinus curve across the word area)
-    ctx.strokeStyle = TITLE_SNAKE_COLOR;
-    ctx.lineWidth = 18;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    const segments = 24;
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      const x = x0 + t * width;
-      const y = y0 + height/2 + Math.sin(t * Math.PI * 2) * (height/3);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    // Back to compact block-style letters made from rounded segments
+    const LETTERS = {
+      S: ['11110','10000','11100','00010','11110'],
+      N: ['10001','11001','10101','10011','10001'],
+      A: ['01110','10001','11111','10001','10001'],
+      K: ['10001','10010','11100','10010','10001'],
+      E: ['11111','10000','11110','10000','11111']
+    };
+    const word = ['S','N','A','K','E'];
+    const letterW = 5, letterH = 5, gap = 2;
+    const totalCells = word.length * letterW + (word.length - 1) * gap;
+    const cell = Math.floor(Math.min(canvas.width * 0.86 / totalCells, 24));
+    const totalWpx = totalCells * cell;
+    const x0 = Math.floor((canvas.width - totalWpx) / 2);
+    const y0 = Math.max(18, bottomY - letterH * cell - 10);
+    let cursor = 0;
+    for (const ch of word) {
+      const grid = LETTERS[ch];
+      for (let y = 0; y < letterH; y++) {
+        for (let x = 0; x < letterW; x++) {
+          if (grid[y][x] === '1') {
+            const px = x0 + (cursor + x) * cell;
+            const py = y0 + y * cell;
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            roundRect(ctx, px, py + 2, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
+            ctx.fill();
+            ctx.fillStyle = TITLE_SNAKE_COLOR;
+            roundRect(ctx, px, py, cell - 4, cell - 4, Math.floor((cell - 4) / 3));
+            ctx.fill();
+          }
+        }
+      }
+      cursor += letterW + gap;
     }
-    ctx.stroke();
-
-    // Head
-    const hx = x0 + width - 6;
-    const hy = y0 + height/2 + Math.sin(2 * Math.PI) * (height/3);
-    ctx.fillStyle = TITLE_SNAKE_COLOR;
-    ctx.beginPath();
-    ctx.ellipse(hx, hy, 18, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Eyes
-    ctx.fillStyle = '#0c0e14';
-    ctx.beginPath(); ctx.arc(hx - 6, hy - 4, 2.5, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx + 2, hy - 4, 2.5, 0, Math.PI*2); ctx.fill();
-    // Tongue
-    ctx.strokeStyle = '#e06666';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(hx + 16, hy + 2); ctx.lineTo(hx + 26, hy + 4); ctx.moveTo(hx + 26, hy + 4); ctx.lineTo(hx + 22, hy + 1); ctx.moveTo(hx + 26, hy + 4); ctx.lineTo(hx + 22, hy + 7); ctx.stroke();
-    ctx.restore();
-
-    // Overlay thin white path to resemble letters (stylized)
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const word = 'SNAKE';
-    ctx.font = '18px "Press Start 2P", monospace';
-    const tw = ctx.measureText(word).width;
-    ctx.strokeText(word, Math.floor((canvas.width - tw)/2), y0 + height + 10); // small label under snake
-    ctx.restore();
   }
 
   canvas.addEventListener('mouseup', (e) => {
