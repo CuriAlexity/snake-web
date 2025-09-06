@@ -195,28 +195,31 @@
   window.addEventListener('keydown', (e) => {
     // Prevent page scroll on arrows/space
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Spacebar'].includes(e.key)) e.preventDefault();
+    const key = e.key.toLowerCase();
     if (onMenu) {
-      if (e.key === ' ' || e.key === 'Enter') { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; musicPlay(); }
+      if (key === ' ' || key === 'enter') { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
       return;
     }
-    if (e.key === 'Escape') { location.reload(); }
+    if (key === 'escape') { location.reload(); }
     if (gameOver || win) {
-      if (e.key.toLowerCase() === 'r') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; musicPlay(); }
+      if (key === 'r' || key === 'к') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
       return;
     }
-    if (e.key === ' ') { paused = !paused; musicPause(paused); return; }
+    if (key === ' ') { paused = !paused; if (paused) musicPause(); else if (!musicMuted) musicPlay(); return; }
+    if (key === 'm' || key === 'ь') { musicToggleMute(); return; }
     if (e.key === '-' || e.key === '_') { fps = Math.max(MIN_FPS, fps - 1); return; }
     if (e.key === '=' || e.key === '+') { fps = Math.min(MAX_FPS, fps + 1); return; }
     const [dx, dy] = dir;
-    if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') { if (!(dx === 0 && dy === 1)) pendingDir = [0, -1]; }
-    else if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') { if (!(dx === 0 && dy === -1)) pendingDir = [0, 1]; }
-    else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { if (!(dx === 1 && dy === 0)) pendingDir = [-1, 0]; }
-    else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { if (!(dx === -1 && dy === 0)) pendingDir = [1, 0]; }
+    if (e.key === 'ArrowUp' || key === 'w' || key === 'ц') { if (!(dx === 0 && dy === 1)) pendingDir = [0, -1]; }
+    else if (e.key === 'ArrowDown' || key === 's' || key === 'ы') { if (!(dx === 0 && dy === -1)) pendingDir = [0, 1]; }
+    else if (e.key === 'ArrowLeft' || key === 'a' || key === 'ф') { if (!(dx === 1 && dy === 0)) pendingDir = [-1, 0]; }
+    else if (e.key === 'ArrowRight' || key === 'd' || key === 'в') { if (!(dx === -1 && dy === 0)) pendingDir = [1, 0]; }
   });
 
   // Simple WebAudio background loop
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let actx = null, musicOsc = null, musicGain = null;
+  let musicMuted = false;
   function ensureAudio() {
     if (actx) return;
     try {
@@ -230,8 +233,9 @@
       musicOsc.start();
       // schedule simple repeating melody
       let t = actx.currentTime;
-      const seq = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
-      const step = 0.18; // tempo
+      // More cheerful, a bit slower and varied (NES-like)
+      const seq = [262, 330, 392, 523, 392, 330, 349, 392, 440, 392, 349, 330];
+      const step = 0.22; // tempo
       function schedule() {
         if (!musicOsc) return;
         for (let i = 0; i < 64; i++) {
@@ -245,8 +249,9 @@
       schedule();
     } catch (e) { /* ignore */ }
   }
-  function musicPlay() { ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.08, actx.currentTime, 0.03); }
+  function musicPlay() { if (musicMuted) return; ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.06, actx.currentTime, 0.03); }
   function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
+  function musicToggleMute() { musicMuted = !musicMuted; if (musicMuted) musicPause(); else musicPlay(); }
 
   // Loop
   let last = performance.now();
@@ -295,34 +300,40 @@
     ctx.fillText(t, (canvas.width - w) / 2, Math.floor(canvas.height / 2));
   }
 
-  function drawMenu() {
-    drawCenterText('Snake');
+  function computeStartButton() {
+    const padX = 24, padY = 12;
+    const maxW = canvas.width * 0.86;
+    let size = 16;
     const t = 'Press Start';
-    ctx.font = '16px "Press Start 2P", monospace';
-    const m = ctx.measureText(t);
-    const padX = 24, padY = 16;
-    const w = m.width + padX * 2;
-    const h = 44;
+    ctx.font = `${size}px "Press Start 2P", monospace`;
+    let textW = ctx.measureText(t).width;
+    while (textW + padX * 2 > maxW && size > 10) {
+      size -= 1;
+      ctx.font = `${size}px "Press Start 2P", monospace`;
+      textW = ctx.measureText(t).width;
+    }
+    const w = textW + padX * 2;
+    const h = size + padY * 2;
     const x = (canvas.width - w) / 2;
     const y = (canvas.height - h) / 2;
-    drawGlass(x, y, w, h);
+    return {x, y, w, h, size, padX, padY, t};
+  }
+
+  function drawMenu() {
+    drawCenterText('Snake');
+    const btn = computeStartButton();
+    drawGlass(btn.x, btn.y, btn.w, btn.h);
     ctx.fillStyle = COLOR_TEXT;
-    ctx.fillText(t, x + padX, y + 30);
+    ctx.font = `${btn.size}px "Press Start 2P", monospace`;
+    ctx.fillText(btn.t, btn.x + btn.padX, btn.y + btn.h - btn.padY);
   }
 
   canvas.addEventListener('mouseup', (e) => {
     if (!onMenu) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    ctx.font = '16px "Press Start 2P", monospace';
-    const t = 'Press Start';
-    const m = ctx.measureText(t);
-    const padX = 24, padY = 16;
-    const w = m.width + padX * 2;
-    const h = 44;
-    const x = (canvas.width - w) / 2;
-    const y = (canvas.height - h) / 2;
-    if (mx >= x && mx <= x + w && my >= y && my <= y + h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; musicPlay(); }
+    const b = computeStartButton();
+    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
   });
 
   function tick() {
