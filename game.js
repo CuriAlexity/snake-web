@@ -309,6 +309,32 @@
     try { sfxOsc.stop(t + 5.0); } catch(_){}
   }
 
+  // Short crunchy bite SFX (white noise burst with bandpass)
+  function playEatSfx() {
+    ensureAudio();
+    const sr = actx.sampleRate || 44100;
+    const dur = 0.12; // 120 ms
+    const n = Math.floor(sr * dur);
+    const buf = actx.createBuffer(1, n, sr);
+    const data = buf.getChannelData(0);
+    // Exponential decay envelope for a crunchy pop
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      const env = Math.exp(-8 * t); // fast decay
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = actx.createBufferSource();
+    src.buffer = buf;
+    const bp = actx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1600;
+    bp.Q.value = 1.2;
+    const g = actx.createGain();
+    g.gain.value = 0.08; // close to bg level
+    src.connect(bp); bp.connect(g); g.connect(actx.destination);
+    try { src.start(); } catch(_){}
+  }
+
   // Loop
   let last = performance.now();
   let acc = 0;
@@ -499,6 +525,8 @@
       // Respawn obstacles up to 3
       const excl2 = new Set([...excl, `${food[0]},${food[1]}`]);
       obstacles = spawnObstacles(3, excl2);
+      // Play bite sfx
+      playEatSfx();
     } else {
       snake.pop();
     }
