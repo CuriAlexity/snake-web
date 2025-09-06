@@ -397,13 +397,14 @@ async def main():
     you_win = False
     death_reason = ""
     played_game_over = False
-    on_menu = True
+    on_menu = not IS_WEB
     current_fps = START_FPS
     start_button_rect = pygame.Rect(WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2 - 22, 160, 44)
     pending_direction = direction
     obstacles = set()
-    # Для веба: ждать первого взаимодействия и сразу стартовать
-    waiting_user = IS_WEB
+    # В веб-версии звук отключён, поэтому можно автозапускать без клика
+    waiting_user = False
+    frame_counter = 0
 
     while True:
         for event in pygame.event.get():
@@ -411,7 +412,7 @@ async def main():
                 pygame.quit()
                 sys.exit(0)
             # Любое действие пользователя в вебе снимает блокировку и запускает игру
-            if waiting_user and event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
+            if waiting_user and event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
                 waiting_user = False
                 on_menu = False
                 snake, direction, food, score = reset_game()
@@ -631,6 +632,14 @@ async def main():
         hud_surf = font.render(hud_text, True, COLOR_TEXT)
         screen.blit(hud_surf, (hud_rect.x + 12, hud_rect.y + (hud_rect.height - hud_surf.get_height()) // 2))
 
+        # Простая отладочная метка, чтобы видеть, что кадры идут в вебе
+        try:
+            debug_text = f"frames: {frame_counter}"
+            dbg = font.render(debug_text, True, (200, 200, 120))
+            screen.blit(dbg, (hud_rect.right - dbg.get_width() - 12, hud_rect.y + 4))
+        except Exception:
+            pass
+
         playfield_rect_outer = pygame.Rect(4, HUD_RESERVED_PX, WINDOW_WIDTH - 8, WINDOW_HEIGHT - HUD_RESERVED_PX - 4)
         pygame.draw.rect(screen, BORDER_COLOR, playfield_rect_outer, BORDER_THICKNESS, border_radius=8)
 
@@ -651,6 +660,7 @@ async def main():
             screen.blit(go_surf, (WINDOW_WIDTH // 2 - go_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 12))
 
         pygame.display.flip()
+        frame_counter += 1
         clock.tick(current_fps)
         await asyncio.sleep(0)
 
