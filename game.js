@@ -226,21 +226,27 @@
       actx = new AudioCtx();
       musicOsc = actx.createOscillator();
       musicGain = actx.createGain();
-      musicOsc.type = 'triangle';
+      musicOsc.type = 'square';
       musicOsc.connect(musicGain);
       musicGain.connect(actx.destination);
       musicGain.gain.value = 0.0;
       musicOsc.start();
       // schedule simple repeating melody
       let t = actx.currentTime;
-      // More cheerful, a bit slower and varied (NES-like)
-      const seq = [262, 330, 392, 523, 392, 330, 349, 392, 440, 392, 349, 330];
-      const step = 0.22; // tempo
+      // Short, punchy 16th-note groove (NES-like)
+      const seq = [262, 330, 392, 494, 392, 330, 349, 392, 440, 392, 349, 330, 294, 330, 392, 440];
+      const step = 0.14; // shorter note length
       function schedule() {
         if (!musicOsc) return;
-        for (let i = 0; i < 64; i++) {
+        for (let i = 0; i < 96; i++) {
           for (const f of seq) {
+            // Set pitch
             musicOsc.frequency.setValueAtTime(f, t);
+            // Gate envelope per note (staccato)
+            musicGain.gain.cancelScheduledValues(t);
+            musicGain.gain.setValueAtTime(0.0, t);
+            musicGain.gain.linearRampToValueAtTime(0.055, t + 0.01); // quick attack
+            musicGain.gain.linearRampToValueAtTime(0.0, t + step * 0.7); // release before next
             t += step;
           }
         }
@@ -249,7 +255,7 @@
       schedule();
     } catch (e) { /* ignore */ }
   }
-  function musicPlay() { if (musicMuted) return; ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.06, actx.currentTime, 0.03); }
+  function musicPlay() { if (musicMuted) return; ensureAudio(); if (musicGain) musicGain.gain.setTargetAtTime(0.04, actx.currentTime, 0.03); }
   function musicPause() { if (musicGain && actx) musicGain.gain.setTargetAtTime(0.0, actx.currentTime, 0.03); }
   function musicToggleMute() { musicMuted = !musicMuted; if (musicMuted) musicPause(); else musicPlay(); }
 
