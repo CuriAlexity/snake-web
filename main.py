@@ -346,7 +346,7 @@ def main():
         button_font = pygame.font.SysFont(None, 26)
 
     base_dir = os.path.dirname(__file__)
-    assets_dir = os.path.join(base_dir, "assets")
+    assets_dir = "assets" if IS_WEB else os.path.join(base_dir, "assets")
     music_path, eat_path, over_path = ensure_audio_assets(assets_dir)
     if USE_AUDIO:
         try:
@@ -414,9 +414,10 @@ def main():
                         current_fps = START_FPS
                         pending_direction = direction
                         obstacles = set()
-                        if not pygame.mixer.music.get_busy():
+                        if USE_AUDIO:
                             try:
-                                pygame.mixer.music.play(-1)
+                                if not pygame.mixer.music.get_busy():
+                                    pygame.mixer.music.play(-1)
                             except Exception:
                                 pass
                 elif game_over:
@@ -430,9 +431,10 @@ def main():
                         current_fps = START_FPS
                         pending_direction = direction
                         obstacles = set()
-                        if not pygame.mixer.music.get_busy():
+                        if USE_AUDIO:
                             try:
-                                pygame.mixer.music.play(-1)
+                                if not pygame.mixer.music.get_busy():
+                                    pygame.mixer.music.play(-1)
                             except Exception:
                                 pass
                 elif you_win:
@@ -445,9 +447,10 @@ def main():
                         current_fps = START_FPS
                         pending_direction = direction
                         obstacles = set()
-                        if not pygame.mixer.music.get_busy():
+                        if USE_AUDIO:
                             try:
-                                pygame.mixer.music.play(-1)
+                                if not pygame.mixer.music.get_busy():
+                                    pygame.mixer.music.play(-1)
                             except Exception:
                                 pass
                 else:
@@ -491,9 +494,10 @@ def main():
                     current_fps = START_FPS
                     pending_direction = direction
                     obstacles = set()
-                    if not pygame.mixer.music.get_busy():
+                    if USE_AUDIO:
                         try:
-                            pygame.mixer.music.play(-1)
+                            if not pygame.mixer.music.get_busy():
+                                pygame.mixer.music.play(-1)
                         except Exception:
                             pass
 
@@ -624,7 +628,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        if IS_WEB:
+            import asyncio
+            print("[web] starting asyncio main()")
+            asyncio.run(main())
+        else:
+            main()
+    except Exception as exc:
+        print("[error]", exc)
 
 
 
