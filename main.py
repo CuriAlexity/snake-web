@@ -340,7 +340,8 @@ async def main():
     if USE_AUDIO:
         pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
-    flags = pygame.SCALED if IS_WEB else 0
+    # На вебе отключим SCALED во избежание несовместимости
+    flags = 0
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), flags)
     pygame.display.set_caption("Snake")
     clock = pygame.time.Clock()
@@ -596,8 +597,14 @@ async def main():
             win_surf = font.render(win_text, True, COLOR_TEXT)
             screen.blit(win_surf, (WINDOW_WIDTH // 2 - win_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 12))
 
-        bg = draw_vertical_gradient((WINDOW_WIDTH, WINDOW_HEIGHT), GRADIENT_TOP, GRADIENT_BOTTOM)
-        screen.blit(bg, (0, 0))
+        # Базовая заливка (упрощённо для веб-диагностики)
+        screen.fill((18, 40, 66))
+        # Градиент оставим, но он не критичен
+        try:
+            bg = draw_vertical_gradient((WINDOW_WIDTH, WINDOW_HEIGHT), GRADIENT_TOP, GRADIENT_BOTTOM)
+            screen.blit(bg, (0, 0))
+        except Exception:
+            pass
 
         if waiting_user:
             # простой экран запуска без зависимостей
@@ -660,6 +667,13 @@ async def main():
             go_text = f"Game Over ({death_reason}). Score: {score}. Press R to restart or Esc to quit."
             go_surf = font.render(go_text, True, COLOR_TEXT)
             screen.blit(go_surf, (WINDOW_WIDTH // 2 - go_surf.get_width() // 2, WINDOW_HEIGHT // 2 - 12))
+
+        # Двигающаяся отладочная полоска, чтобы увидеть анимацию
+        try:
+            bar_x = (frame_counter * 3) % WINDOW_WIDTH
+            pygame.draw.rect(screen, (80, 200, 120), (bar_x, HUD_RESERVED_PX + 6, 40, 6), 0, 3)
+        except Exception:
+            pass
 
         pygame.display.flip()
         frame_counter += 1
