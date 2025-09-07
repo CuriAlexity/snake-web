@@ -354,12 +354,14 @@
       const src = actx.createBufferSource();
       src.buffer = biteBuffer;
       src.connect(biteGain);
-      const t0 = actx.currentTime + 0.001; // schedule next tick
-      // trim возможную ведущую тишину ~20ms и ограничить длительность ~0.3s
-      try { src.start(t0, 0.02, 0.35); } catch(_) { try { src.start(); } catch(_){} }
+      const t0 = actx.currentTime + 0.003; // schedule very near future
+      // отрезаем ~1.0s тишины в начале исходного файла, проигрываем сочную часть ~0.6s
+      const offset = 1.0;
+      const dur = 0.6;
+      try { src.start(t0, offset, dur); } catch(_) { try { src.start(); } catch(_){} }
       if (musicGain) {
         musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
-        musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.04);
+        musicGain.gain.setTargetAtTime(0.06, t0 + 0.40, 0.05);
       }
       return;
     }
