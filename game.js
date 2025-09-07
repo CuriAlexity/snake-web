@@ -240,6 +240,7 @@
   let actx = null, musicOsc = null, noteGain = null, musicGain = null;
   let biteBuffer = null;
   let biteGain = null; // reused gain for bite sfx
+  const PREFER_FILE_BITE = true;
   let musicMuted = false;
   function stopBackgroundNow() {
     if (!actx) return;
@@ -300,6 +301,7 @@
       if (!res.ok) return;
       const arr = await res.arrayBuffer();
       biteBuffer = await actx.decodeAudioData(arr);
+      try { console.log('[sfx] apple_bite.wav loaded, duration=', biteBuffer.duration.toFixed(3)); } catch(_){}
     } catch (_) { /* ignore */ }
   }
   async function musicPlay() {
@@ -363,8 +365,10 @@
         musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
         musicGain.gain.setTargetAtTime(0.06, t0 + 0.40, 0.05);
       }
+      try { console.log('[sfx] bite: file'); } catch(_){}
       return;
     }
+    if (PREFER_FILE_BITE) { loadBiteSample(); return; }
     ensureAudio();
     const sr = actx.sampleRate || 44100;
     const dur = 0.12; // original short bite
