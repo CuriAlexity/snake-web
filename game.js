@@ -251,7 +251,7 @@
   function ensureAudio() {
     if (actx) return;
     try {
-      actx = new AudioCtx();
+      actx = new AudioCtx({ latencyHint: 'interactive' });
       musicOsc = actx.createOscillator();
       noteGain = actx.createGain();     // per-note envelope
       musicGain = actx.createGain();    // master volume for pause/mute
@@ -357,11 +357,11 @@
       const src = actx.createBufferSource();
       src.buffer = biteBuffer;
       src.connect(biteGain);
-      const t0 = actx.currentTime + 0.002; // schedule next audio quantum
+      const t0 = actx.currentTime;
       try { src.start(t0); } catch(_) { try { src.start(); } catch(_){} }
       if (musicGain) {
-        musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
-        musicGain.gain.setTargetAtTime(0.06, t0 + 0.30, 0.04);
+        musicGain.gain.setTargetAtTime(0.02, t0, 0.005);
+        musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.03);
       }
       try { console.log('[sfx] bite: file'); } catch(_){}
       return;
