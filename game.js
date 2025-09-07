@@ -293,6 +293,29 @@
       schedule();
     } catch (e) { /* ignore */ }
   }
+  function trimAudioBuffer(buffer, threshold = 0.02, prerollSec = 0.005, maxDurSec = 0.6) {
+    const sr = buffer.sampleRate;
+    const channels = buffer.numberOfChannels;
+    const len = buffer.length;
+    // find first index above threshold
+    let start = 0;
+    const data0 = buffer.getChannelData(0);
+    const abs = Math.abs;
+    for (let i = 0; i < len; i++) {
+      if (abs(data0[i]) > threshold) { start = i; break; }
+    }
+    const preroll = Math.floor(prerollSec * sr);
+    start = Math.max(0, start - preroll);
+    const outLen = Math.min(Math.floor(maxDurSec * sr), len - start);
+    const out = new AudioBuffer({ length: outLen, numberOfChannels: channels, sampleRate: sr });
+    for (let ch = 0; ch < channels; ch++) {
+      const src = buffer.getChannelData(ch);
+      const dst = out.getChannelData(ch);
+      dst.set(src.subarray(start, start + outLen));
+    }
+    return out;
+  }
+
   async function loadBiteSample() {
     try {
       ensureAudio();
@@ -300,8 +323,9 @@
       const res = await fetch(`assets/apple_bite.wav?v=${bust}`, { cache: 'no-store' });
       if (!res.ok) return;
       const arr = await res.arrayBuffer();
-      biteBuffer = await actx.decodeAudioData(arr);
-      try { console.log('[sfx] apple_bite.wav loaded, duration=', biteBuffer.duration.toFixed(3)); } catch(_){}
+      const decoded = await actx.decodeAudioData(arr);
+      biteBuffer = trimAudioBuffer(decoded, 0.02, 0.005, 0.6);
+      try { console.log('[sfx] apple_bite.wav loaded, duration=', decoded.duration.toFixed(3), 'trimmed=', biteBuffer.duration.toFixed(3)); } catch(_){}
     } catch (_) { /* ignore */ }
   }
   async function musicPlay() {
