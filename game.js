@@ -557,7 +557,13 @@
     if (!onMenu) return;
     const {x: mx, y: my} = getCanvasPos(e);
     const b = computeStartButton();
-    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
+    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+      onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS;
+      // ensure bg music resumes on start
+      musicMuted = false; try { ensureAudio(); actx.resume && actx.resume(); } catch(_){}
+      if (musicGain && actx) { const now = actx.currentTime || 0; try { musicGain.gain.cancelScheduledValues(now); musicGain.gain.setValueAtTime(0.0, now); } catch(_){} }
+      musicPlay();
+    }
   });
 
   // Touch controls: swipe to move, tap to pause/start/restart
@@ -584,13 +590,19 @@
 
     if (onMenu) {
       if (dist < swipeThreshold) {
-        onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay();
+        onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS;
+        musicMuted = false; try { ensureAudio(); actx.resume && actx.resume(); } catch(_){}
+        if (musicGain && actx) { const now = actx.currentTime || 0; try { musicGain.gain.cancelScheduledValues(now); musicGain.gain.setValueAtTime(0.0, now); } catch(_){} }
+        musicPlay();
         return;
       }
     }
     if (gameOver || win) {
       if (dist < swipeThreshold) {
-        onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; playedGameOver = false; musicPlay();
+        onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; playedGameOver = false;
+        stopSfx(); musicMuted = false; try { ensureAudio(); actx.resume && actx.resume(); } catch(_){}
+        if (musicGain && actx) { const now = actx.currentTime || 0; try { musicGain.gain.cancelScheduledValues(now); musicGain.gain.setValueAtTime(0.0, now); } catch(_){} }
+        musicPlay();
         return;
       }
     }
