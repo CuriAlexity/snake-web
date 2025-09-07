@@ -560,6 +560,56 @@
     if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) { onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay(); }
   });
 
+  // Touch controls: swipe to move, tap to pause/start/restart
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  function getTouchCanvasPos(t){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+  }
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    const p = getTouchCanvasPos(t);
+    touchStartX = p.x; touchStartY = p.y; touchStartTime = performance.now();
+  }, { passive: true });
+  canvas.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    const p = getTouchCanvasPos(t);
+    const dx = p.x - touchStartX;
+    const dy = p.y - touchStartY;
+    const dist = Math.hypot(dx, dy);
+    const dt = performance.now() - touchStartTime;
+    const swipeThreshold = Math.max(14, CELL * 0.6);
+
+    if (onMenu) {
+      if (dist < swipeThreshold) {
+        onMenu = false; resetGame(); paused = false; gameOver = false; win = false; fps = START_FPS; if (!musicMuted) musicPlay();
+        return;
+      }
+    }
+    if (gameOver || win) {
+      if (dist < swipeThreshold) {
+        onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; playedGameOver = false; musicPlay();
+        return;
+      }
+    }
+
+    if (dist < swipeThreshold && dt < 250) {
+      paused = !paused; if (!paused && !musicMuted) musicPlay(); else musicPause();
+      return;
+    }
+
+    const [dxCur, dyCur] = dir;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0 && !(dxCur === -1 && dyCur === 0)) pendingDir = [1, 0];
+      else if (dx < 0 && !(dxCur === 1 && dyCur === 0)) pendingDir = [-1, 0];
+    } else {
+      if (dy > 0 && !(dxCur === 0 && dyCur === -1)) pendingDir = [0, 1];
+      else if (dy < 0 && !(dxCur === 0 && dyCur === 1)) pendingDir = [0, -1];
+    }
+  }, { passive: true });
+
   function tick() {
     dir = pendingDir.slice();
     const head = snake[0];
