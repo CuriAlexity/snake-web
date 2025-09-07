@@ -352,23 +352,22 @@
 
   // Short crunchy bite SFX (white noise burst with bandpass)
   function playEatSfx() {
+    // Always prefer file sample; no synthetic fallback
     if (biteBuffer && actx) {
       const src = actx.createBufferSource();
       src.buffer = biteBuffer;
       src.connect(biteGain);
-      const t0 = actx.currentTime + 0.003; // schedule very near future
-      // отрезаем ~1.0s тишины в начале исходного файла, проигрываем сочную часть ~0.6s
-      const offset = 1.0;
-      const dur = 0.6;
-      try { src.start(t0, offset, dur); } catch(_) { try { src.start(); } catch(_){} }
+      const t0 = actx.currentTime + 0.002; // schedule next audio quantum
+      try { src.start(t0); } catch(_) { try { src.start(); } catch(_){} }
       if (musicGain) {
         musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
-        musicGain.gain.setTargetAtTime(0.06, t0 + 0.40, 0.05);
+        musicGain.gain.setTargetAtTime(0.06, t0 + 0.30, 0.04);
       }
       try { console.log('[sfx] bite: file'); } catch(_){}
       return;
     }
-    if (PREFER_FILE_BITE) { loadBiteSample(); return; }
+    // If not loaded yet, trigger load and skip this bite (no synthetic)
+    loadBiteSample();
     ensureAudio();
     const sr = actx.sampleRate || 44100;
     const dur = 0.12; // original short bite
