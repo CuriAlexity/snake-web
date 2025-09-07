@@ -222,6 +222,7 @@
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let actx = null, musicOsc = null, noteGain = null, musicGain = null;
   let biteBuffer = null;
+  let biteGain = null; // reused gain for bite sfx
   let musicMuted = false;
   function stopBackgroundNow() {
     if (!actx) return;
@@ -236,10 +237,13 @@
       musicOsc = actx.createOscillator();
       noteGain = actx.createGain();     // per-note envelope
       musicGain = actx.createGain();    // master volume for pause/mute
+      biteGain = actx.createGain();     // reused for bite sfx
       musicOsc.type = 'square';
       musicOsc.connect(noteGain);
       noteGain.connect(musicGain);
       musicGain.connect(actx.destination);
+      biteGain.gain.value = 0.16;
+      biteGain.connect(actx.destination);
       noteGain.gain.value = 0.0;
       musicGain.gain.value = 0.0;
       musicOsc.start();
@@ -332,14 +336,14 @@
     if (biteBuffer && actx) {
       const src = actx.createBufferSource();
       src.buffer = biteBuffer;
-      const g = actx.createGain(); g.gain.value = 0.16;
-      src.connect(g); g.connect(actx.destination);
-      const t0 = actx.currentTime;
+      src.connect(biteGain);
+      const t0 = actx.currentTime + 0.001; // schedule next tick
+      // trim возможную ведущую тишину ~20ms и ограничить длительность ~0.3s
+      try { src.start(t0, 0.02, 0.35); } catch(_) { try { src.start(); } catch(_){} }
       if (musicGain) {
         musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
         musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.04);
       }
-      try { src.start(); } catch(_){}
       return;
     }
     ensureAudio();
