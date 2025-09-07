@@ -221,6 +221,7 @@
   // Simple WebAudio background loop
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let actx = null, musicOsc = null, noteGain = null, musicGain = null;
+  let biteBuffer = null;
   let musicMuted = false;
   function stopBackgroundNow() {
     if (!actx) return;
@@ -270,6 +271,16 @@
       schedule();
     } catch (e) { /* ignore */ }
   }
+  async function loadBiteSample() {
+    try {
+      ensureAudio();
+      const bust = Math.floor(Date.now() / 1000);
+      const res = await fetch(`assets/apple_bite.wav?v=${bust}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const arr = await res.arrayBuffer();
+      biteBuffer = await actx.decodeAudioData(arr);
+    } catch (_) { /* ignore */ }
+  }
   async function musicPlay() {
     if (musicMuted) return; ensureAudio(); try { await actx.resume?.(); } catch(_){}
     if (musicGain) musicGain.gain.setTargetAtTime(0.06, actx.currentTime, 0.03);
@@ -318,6 +329,19 @@
 
   // Short crunchy bite SFX (white noise burst with bandpass)
   function playEatSfx() {
+    if (biteBuffer && actx) {
+      const src = actx.createBufferSource();
+      src.buffer = biteBuffer;
+      const g = actx.createGain(); g.gain.value = 0.16;
+      src.connect(g); g.connect(actx.destination);
+      const t0 = actx.currentTime;
+      if (musicGain) {
+        musicGain.gain.setTargetAtTime(0.02, t0, 0.01);
+        musicGain.gain.setTargetAtTime(0.06, t0 + 0.25, 0.04);
+      }
+      try { src.start(); } catch(_){}
+      return;
+    }
     ensureAudio();
     const sr = actx.sampleRate || 44100;
     const dur = 0.12; // original short bite
@@ -520,5 +544,6 @@
   // Start
   resetGame();
   onMenu = true;
+  loadBiteSample();
   requestAnimationFrame(loop);
 })();
