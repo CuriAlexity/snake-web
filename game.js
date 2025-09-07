@@ -259,7 +259,7 @@
       musicOsc.connect(noteGain);
       noteGain.connect(musicGain);
       musicGain.connect(actx.destination);
-      biteGain.gain.value = 0.16;
+      biteGain.gain.value = 0.20;
       biteGain.connect(actx.destination);
       noteGain.gain.value = 0.0;
       musicGain.gain.value = 0.0;
