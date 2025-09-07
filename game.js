@@ -204,7 +204,24 @@
     }
     if (key === 'escape') { location.reload(); }
     if (gameOver || win) {
-      if (key === 'r' || key === 'к') { onMenu = false; resetGame(); gameOver = false; win = false; paused = false; fps = START_FPS; playedGameOver = false; if (!musicMuted) musicPlay(); }
+      if (key === 'r' || key === 'к') {
+        onMenu = false;
+        resetGame();
+        gameOver = false;
+        win = false;
+        paused = false;
+        fps = START_FPS;
+        playedGameOver = false;
+        stopSfx();
+        // Force-unmute and bring bg music back immediately
+        musicMuted = false;
+        try { ensureAudio(); actx.resume && actx.resume(); } catch(_){}
+        if (musicGain && actx) {
+          const now = actx.currentTime || 0;
+          try { musicGain.gain.cancelScheduledValues(now); musicGain.gain.setValueAtTime(0.0, now); } catch(_){}
+        }
+        musicPlay();
+      }
       return;
     }
     if (key === ' ') { paused = !paused; if (paused) musicPause(); else if (!musicMuted) musicPlay(); return; }
